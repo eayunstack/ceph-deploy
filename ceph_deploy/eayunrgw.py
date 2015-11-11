@@ -109,10 +109,12 @@ def new_rgw_keyring(args, gw_name, conn):
     keyring_path = '{name}.client.radosgw.keyring'.format(
         name=args.cluster,
     )
-    try:
-        rgw_keyring = files.read_file(keyring_path)
-    except Exception:
-        rgw_keyring = ''
+    rgw_keyring = ''
+    if os.path.exists(keyring_path):
+        try:
+            rgw_keyring = files.read_file(keyring_path)
+        except Exception:
+            raise 
 
     rgw_keyring += '''[client.radosgw.%s]
     key = %s
@@ -151,12 +153,12 @@ def new_rgw_keyring(args, gw_name, conn):
         [
             'ceph',
             '-k',
-            '/etc/ceph/ceph.client.admin.keyring',
+            '/etc/ceph/%s.client.admin.keyring' % args.cluster,
             'auth',
             'add',
             'client.radosgw.%s' % gw_name,
             '-i',
-            '/etc/ceph/ceph.client.radosgw.keyring',
+            '/etc/ceph/%s.client.radosgw.keyring' % args.cluster,
         ],
         timeout=7
     )
