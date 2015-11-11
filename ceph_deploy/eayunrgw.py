@@ -417,16 +417,19 @@ def make(parser):
     eayunrgw_create.add_argument(
         '--region',
         metavar='REGION',
+        required=True,
         help='The name of logical geographic area, e.g. beijing'
         )
     eayunrgw_create.add_argument(
         '--zone',
         metavar='ZONE',
+        required=True,
         help='The name of logical grouping, e.g. daxing'
         )
     eayunrgw_create.add_argument(
         '--host',
         metavar='HOST',
+        required=True,
         help='The host to which deploy eayun rgw'
         )
 
@@ -437,11 +440,13 @@ def make(parser):
     eayunrgw_create.add_argument(
         '--zone',
         metavar='ZONE',
+        required=True,
         help='The name of logical grouping, e.g. daxing'
         )
     eayunrgw_create.add_argument(
         '--host',
         metavar='HOST',
+        required=True,
         help='The host to which deploy eayun rgw'
         )
 
