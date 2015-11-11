@@ -246,6 +246,10 @@ def eayunrgw_create(args):
         remoto.process.run(conn,
                            ['ceph', 'osd', 'pool', 'create', pool, '32', ],
                            timeout=7)
+    # Create region root pools,Otherwise fail to update regionmap
+    remoto.process.run(conn,
+                   ['ceph', 'osd', 'pool', 'create', '.%s.rgw.root' % region_name, '32', ],
+                   timeout=7)
 
     config_http(distro, conn, gw_name)
 
