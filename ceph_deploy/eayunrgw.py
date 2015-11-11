@@ -109,10 +109,12 @@ def new_rgw_keyring(args, gw_name, conn):
     keyring_path = '{name}.client.radosgw.keyring'.format(
         name=args.cluster,
     )
-    try:
-        rgw_keyring = files.read_file(keyring_path)
-    except Exception:
-        rgw_keyring = ''
+    rgw_keyring = ''
+    if os.path.exists(keyring_path):
+        try:
+            rgw_keyring = files.read_file(keyring_path)
+        except Exception:
+            raise 
 
     rgw_keyring += '''[client.radosgw.%s]
     key = %s
@@ -151,12 +153,12 @@ def new_rgw_keyring(args, gw_name, conn):
         [
             'ceph',
             '-k',
-            '/etc/ceph/ceph.client.admin.keyring',
+            '/etc/ceph/%s.client.admin.keyring' % args.cluster,
             'auth',
             'add',
             'client.radosgw.%s' % gw_name,
             '-i',
-            '/etc/ceph/ceph.client.radosgw.keyring',
+            '/etc/ceph/%s.client.radosgw.keyring' % args.cluster,
         ],
         timeout=7
     )
@@ -167,7 +169,9 @@ def config_http(distro, conn, gw_name):
     remoto.process.run(conn, ['mkdir', '-p', '/var/lib/ceph/radosgw/ceph-radosgw.%s' % gw_name, ],
                        timeout=7)
     # install httpd
-    remoto.process.run(conn, ['yum', 'install', '-y', 'httpd', ], timeout=0)
+    stdout, stderr, returncode = remoto.process.check(conn, ['rpm','-qa','httpd'], timeout=7)
+    if not stdout:
+        remoto.process.run(conn, ['yum', 'install', '-y', 'httpd', ], timeout=0)
     remoto.process.run(conn, ['chown', 'apache:apache', '/var/run/ceph', ], timeout=0)
     distro.conn.remote_module.touch_file('/var/log/radosgw/client.radosgw.gateway.log')
     remoto.process.run(conn, ['chown', 'apache:apache', '/var/log/radosgw/client.radosgw.gateway.log', ],
@@ -246,6 +250,10 @@ def eayunrgw_create(args):
         remoto.process.run(conn,
                            ['ceph', 'osd', 'pool', 'create', pool, '32', ],
                            timeout=7)
+    # Create region root pools,Otherwise fail to update regionmap
+    remoto.process.run(conn,
+                   ['ceph', 'osd', 'pool', 'create', '.%s.rgw.root' % region_name, '32', ],
+                   timeout=7)
 
     config_http(distro, conn, gw_name)
 
@@ -417,16 +425,19 @@ def make(parser):
     eayunrgw_create.add_argument(
         '--region',
         metavar='REGION',
+        required=True,
         help='The name of logical geographic area, e.g. beijing'
         )
     eayunrgw_create.add_argument(
         '--zone',
         metavar='ZONE',
+        required=True,
         help='The name of logical grouping, e.g. daxing'
         )
     eayunrgw_create.add_argument(
         '--host',
         metavar='HOST',
+        required=True,
         help='The host to which deploy eayun rgw'
         )
 
@@ -437,11 +448,13 @@ def make(parser):
     eayunrgw_create.add_argument(
         '--zone',
         metavar='ZONE',
+        required=True,
         help='The name of logical grouping, e.g. daxing'
         )
     eayunrgw_create.add_argument(
         '--host',
         metavar='HOST',
+        required=True,
         help='The host to which deploy eayun rgw'
         )
 
