@@ -332,28 +332,17 @@ def eayunrgw_create(args):
              '--system'],
             timeout=7)
 
-        access_key, secret_key = ('', '')
+        acc_key, sec_key = ('', '')
         if returncode != 0:
             LOG.error('Get radosgw user access_key and secret_key failure')
         else:
             m = re.search('"access_key": "(\S+)"', str(stdout))
             if hasattr(m, 'group'):
-                access_key = m.group(1)
+                acc_key = m.group(1)
             m = re.search('"secret_key": "(\S+)"', str(stdout))
             if hasattr(m, 'group'):
-                secret_key = m.group(1)
-
-        if not access_key or not secret_key:
-            raise
-        if '/' in secret_key or '\\' in secret_key:
-            remoto.process.run(
-                conn,
-                ['radosgw-admin', 'user', 'rm', '--uid=%s' % name, '--name',
-                 'client.radosgw.%s' % name, ],
-                timeout=7)
-            return create_zone_user(name)
-        else:
-            return access_key, secret_key
+                sec_key = m.group(1)
+            return acc_key, sec_key
 
     # second configure
     access_key, secret_key = create_zone_user(gw_name)
