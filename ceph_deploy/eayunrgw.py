@@ -114,7 +114,7 @@ def new_rgw_keyring(args, gw_name, conn):
         try:
             rgw_keyring = files.read_file(keyring_path)
         except Exception:
-            raise 
+            raise
 
     rgw_keyring += '''[client.radosgw.%s]
     key = %s
@@ -244,7 +244,10 @@ def eayunrgw_create(args):
     new_rgw_keyring(args, gw_name, conn)
 
     # Create pools.
-    suffix = ['.rgw.root', '.rgw.control', '.rgw.gc', '.log', '.users', '.users.email', '.users.uid']
+    suffix = ['rgw', '.rgw.root', '.rgw.control', '.rgw.gc',
+              'rgw.buckets', 'rgw.buckets.index', 'rgw.buckets.extra',
+              '.log', 'intent-log', 'usage', '.users',
+              '.users.email', '.users.uid']
     pools = ['.%s%s' % (zone_name, suf) for suf in suffix]
     for pool in pools:
         remoto.process.run(conn,
