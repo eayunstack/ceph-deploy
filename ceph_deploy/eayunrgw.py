@@ -173,6 +173,7 @@ def config_http(distro, conn, gw_name):
     if not stdout:
         remoto.process.run(conn, ['yum', 'install', '-y', 'httpd', ], timeout=0)
     remoto.process.run(conn, ['chown', 'apache:apache', '/var/run/ceph', ], timeout=0)
+    remoto.process.run(conn, ['mkdir', '-p', '/var/log/radosgw', ], timeout=0)
     distro.conn.remote_module.touch_file('/var/log/radosgw/client.radosgw.gateway.log')
     remoto.process.run(conn, ['chown', 'apache:apache', '/var/log/radosgw/client.radosgw.gateway.log', ],
                        timeout=0)
