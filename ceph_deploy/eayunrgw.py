@@ -45,7 +45,8 @@ REGION_CONTECT = '''{ "name": "%s",
             "tags": []
         }
     ],
-    "default_placement": "default-placement"}'''
+    "default_placement": "default-placement"},
+    "hostnames": [%s]'''
 
 ZONE_CONTECT = '''{ "domain_root": ".%(zone)s.domain.rgw",
       "control_pool": ".%(zone)s.rgw.control",
@@ -237,6 +238,9 @@ def eayunrgw_create(args):
     region_name = args.region
     zone_name = args.zone
     host_name = args.host
+    domain = args.domain
+    if not domain:
+        domain = ["obs.eayun.com"]
     gw_name = '%s-%s' % (zone_name, host_name)
     distro = hosts.get(host_name, username=args.username)
     conn = distro.conn
@@ -269,7 +273,8 @@ def eayunrgw_create(args):
         host_name,
         zone_name,
         zone_name,
-        host_name
+        host_name,
+        reduce(lambda x, y: x+','+y, domain)
     )
     region_path = '/etc/ceph/%s.json' % region_name
     distro.conn.remote_module.write_file(region_path, region_context)
@@ -432,6 +437,13 @@ def make(parser):
         metavar='HOST',
         required=True,
         help='The host to which deploy eayun rgw'
+        )
+    eayunrgw_create.add_argument(
+        '--domain',
+        metavar='DOMAIN',
+        required=False,
+        nargs='*',
+        help='The domain name to which deploy eayun rgw'
         )
 
     eayunrgw_create = eayunrgw_parser.add_parser(
