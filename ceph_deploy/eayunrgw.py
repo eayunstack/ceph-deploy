@@ -45,7 +45,8 @@ REGION_CONTECT = '''{ "name": "%s",
             "tags": []
         }
     ],
-    "default_placement": "default-placement"}'''
+    "default_placement": "default-placement"},
+    "hostnames": [%s]'''
 
 ZONE_CONTECT = '''{ "domain_root": ".%(zone)s.domain.rgw",
       "control_pool": ".%(zone)s.rgw.control",
@@ -85,9 +86,9 @@ def get_hosts(cfg, zone_name):
 def restart_serv(conn, gw_name):
     remoto.process.run(conn, ['/etc/init.d/ceph', 'restart', 'mon', ], timeout=7)
     remoto.process.run(conn,
-                       ['radosgw', '-c', '/etc/ceph/ceph.conf', '-n', 'client.radosgw.%s' % gw_name,
-                        '--debug-rgw', '-d'],
+                       ['/etc/init.d/ceph-radosgw', '-n', 'client.radosgw.%s' % gw_name],
                        timeout=7)
+    remoto.process.run(conn, ['systemctl', 'enable', 'httpd', ], timeout=7)
     remoto.process.run(conn, ['systemctl', 'restart', 'httpd', ], timeout=7)
 
 
@@ -114,7 +115,7 @@ def new_rgw_keyring(args, gw_name, conn):
         try:
             rgw_keyring = files.read_file(keyring_path)
         except Exception:
-            raise 
+            raise
 
     rgw_keyring += '''[client.radosgw.%s]
     key = %s
@@ -173,6 +174,7 @@ def config_http(distro, conn, gw_name):
     if not stdout:
         remoto.process.run(conn, ['yum', 'install', '-y', 'httpd', ], timeout=0)
     remoto.process.run(conn, ['chown', 'apache:apache', '/var/run/ceph', ], timeout=0)
+    remoto.process.run(conn, ['mkdir', '-p', '/var/log/radosgw', ], timeout=0)
     distro.conn.remote_module.touch_file('/var/log/radosgw/client.radosgw.gateway.log')
     remoto.process.run(conn, ['chown', 'apache:apache', '/var/log/radosgw/client.radosgw.gateway.log', ],
                        timeout=0)
@@ -236,6 +238,9 @@ def eayunrgw_create(args):
     region_name = args.region
     zone_name = args.zone
     host_name = args.host
+    domain = args.domain
+    if not domain:
+        domain = ["obs.eayun.com"]
     gw_name = '%s-%s' % (zone_name, host_name)
     distro = hosts.get(host_name, username=args.username)
     conn = distro.conn
@@ -244,7 +249,10 @@ def eayunrgw_create(args):
     new_rgw_keyring(args, gw_name, conn)
 
     # Create pools.
-    suffix = ['.rgw.root', '.rgw.control', '.rgw.gc', '.log', '.users', '.users.email', '.users.uid']
+    suffix = ['rgw', '.rgw.root', '.rgw.control', '.rgw.gc',
+              'rgw.buckets', 'rgw.buckets.index', 'rgw.buckets.extra',
+              '.log', 'intent-log', 'usage', '.users',
+              '.users.email', '.users.uid']
     pools = ['.%s%s' % (zone_name, suf) for suf in suffix]
     for pool in pools:
         remoto.process.run(conn,
@@ -265,7 +273,8 @@ def eayunrgw_create(args):
         host_name,
         zone_name,
         zone_name,
-        host_name
+        host_name,
+        reduce(lambda x, y: x+','+y, domain)
     )
     region_path = '/etc/ceph/%s.json' % region_name
     distro.conn.remote_module.write_file(region_path, region_context)
@@ -332,28 +341,17 @@ def eayunrgw_create(args):
              '--system'],
             timeout=7)
 
-        access_key, secret_key = ('', '')
+        acc_key, sec_key = ('', '')
         if returncode != 0:
             LOG.error('Get radosgw user access_key and secret_key failure')
         else:
             m = re.search('"access_key": "(\S+)"', str(stdout))
             if hasattr(m, 'group'):
-                access_key = m.group(1)
+                acc_key = m.group(1)
             m = re.search('"secret_key": "(\S+)"', str(stdout))
             if hasattr(m, 'group'):
-                secret_key = m.group(1)
-
-        if not access_key or not secret_key:
-            raise
-        if '/' in secret_key or '\\' in secret_key:
-            remoto.process.run(
-                conn,
-                ['radosgw-admin', 'user', 'rm', '--uid=%s' % name, '--name',
-                 'client.radosgw.%s' % name, ],
-                timeout=7)
-            return create_zone_user(name)
-        else:
-            return access_key, secret_key
+                sec_key = m.group(1)
+            return acc_key, sec_key
 
     # second configure
     access_key, secret_key = create_zone_user(gw_name)
@@ -439,6 +437,13 @@ def make(parser):
         metavar='HOST',
         required=True,
         help='The host to which deploy eayun rgw'
+        )
+    eayunrgw_create.add_argument(
+        '--domain',
+        metavar='DOMAIN',
+        required=False,
+        nargs='*',
+        help='The domain name to which deploy eayun rgw'
         )
 
     eayunrgw_create = eayunrgw_parser.add_parser(
