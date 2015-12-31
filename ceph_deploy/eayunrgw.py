@@ -14,7 +14,7 @@ from ceph_deploy.util import files
 
 LOG = logging.getLogger(__name__)
 
-RGW_CONTECT = '''<VirtualHost *:80>
+RGW_CONTECT = '''<VirtualHost *:8080>
     ServerName localhost
     DocumentRoot /var/www/html
     ErrorLog /var/log/httpd/rgw_error.log
@@ -32,12 +32,12 @@ REGION_CONTECT = '''{ "name": "%s",
     "api_name": "%s",
     "is_master": "true",
     "endpoints": [
-          "http:\/\/%s:80\/"],
+          "http:\/\/%s:8080\/"],
     "master_zone": "%s",
     "zones": [
         { "name": "%s",
             "endpoints": [
-                "http:\/\/%s:80\/"],
+                "http:\/\/%s:8080\/"],
             "log_meta": "true",
             "log_data": "true"}],
     "placement_targets": [
@@ -237,7 +237,9 @@ def config_http(distro, conn, gw_name):
     remoto.process.run(conn, ['chown', 'apache:apache', '/var/log/radosgw/client.radosgw.gateway.log', ],
                        timeout=0)
     httpd_path = '/etc/httpd/conf/httpd.conf'
-    httpd_context = '%s\n%s' % (distro.conn.remote_module.get_file(httpd_path), FACTCGI_CONTECT)
+    httpd_conf = distro.conn.remote_module.get_file(httpd_path)
+    httpd_conf = httpd_conf.replace('\nListen 80\n', '\nListen 8080\n')
+    httpd_context = '%s\n%s' % (httpd_conf, FACTCGI_CONTECT)
     distro.conn.remote_module.write_file(httpd_path, httpd_context)
     gw_context = RGW_CONTECT % gw_name
     gw_path = '/etc/httpd/conf.d/rgw.conf'
