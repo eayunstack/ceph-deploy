@@ -249,9 +249,9 @@ def eayunrgw_create(args):
     new_rgw_keyring(args, gw_name, conn)
 
     # Create pools.
-    suffix = ['rgw', '.rgw.root', '.rgw.control', '.rgw.gc',
-              'rgw.buckets', 'rgw.buckets.index', 'rgw.buckets.extra',
-              '.log', 'intent-log', 'usage', '.users',
+    suffix = ['.rgw', '.rgw.root', '.rgw.control', '.rgw.gc',
+              '.rgw.buckets', '.rgw.buckets.index', '.rgw.buckets.extra',
+              '.log', '.intent-log', '.usage', '.users',
               '.users.email', '.users.uid']
     pools = ['.%s%s' % (zone_name, suf) for suf in suffix]
     for pool in pools:
