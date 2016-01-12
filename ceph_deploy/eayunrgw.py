@@ -86,7 +86,7 @@ def get_hosts(cfg, zone_name):
 def restart_serv(conn, gw_name):
     remoto.process.run(conn, ['/etc/init.d/ceph', 'restart', 'mon', ], timeout=7)
     remoto.process.run(conn,
-                       ['/etc/init.d/ceph-radosgw', '-n', 'client.radosgw.%s' % gw_name],
+                       ['/etc/init.d/ceph-radosgw', 'start', '-n', 'client.radosgw.%s' % gw_name],
                        timeout=7)
     remoto.process.run(conn, ['systemctl', 'enable', 'httpd', ], timeout=7)
     remoto.process.run(conn, ['systemctl', 'restart', 'httpd', ], timeout=7)
