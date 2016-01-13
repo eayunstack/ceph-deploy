@@ -45,8 +45,8 @@ REGION_CONTECT = '''{ "name": "%s",
             "tags": []
         }
     ],
-    "default_placement": "default-placement"},
-    "hostnames": [%s]'''
+    "default_placement": "default-placement",
+    "hostnames": [%s]},'''
 
 ZONE_CONTECT = '''{ "domain_root": ".%(zone)s.domain.rgw",
       "control_pool": ".%(zone)s.rgw.control",
@@ -274,7 +274,7 @@ def eayunrgw_create(args):
         zone_name,
         zone_name,
         host_name,
-        reduce(lambda x, y: x+','+y, domain)
+        ",".join("\"%s\"" % i for i in domain)
     )
     region_path = '/etc/ceph/%s.json' % region_name
     distro.conn.remote_module.write_file(region_path, region_context)
