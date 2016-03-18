@@ -45,8 +45,8 @@ REGION_CONTECT = '''{ "name": "%s",
             "tags": []
         }
     ],
-    "default_placement": "default-placement"},
-    "hostnames": [%s]'''
+    "default_placement": "default-placement",
+    "hostnames": [%s]},'''
 
 ZONE_CONTECT = '''{ "domain_root": ".%(zone)s.domain.rgw",
       "control_pool": ".%(zone)s.rgw.control",
@@ -86,7 +86,7 @@ def get_hosts(cfg, zone_name):
 def restart_serv(conn, gw_name):
     remoto.process.run(conn, ['/etc/init.d/ceph', 'restart', 'mon', ], timeout=7)
     remoto.process.run(conn,
-                       ['/etc/init.d/ceph-radosgw', '-n', 'client.radosgw.%s' % gw_name],
+                       ['/etc/init.d/ceph-radosgw', 'start', '-n', 'client.radosgw.%s' % gw_name],
                        timeout=7)
     remoto.process.run(conn, ['systemctl', 'enable', 'httpd', ], timeout=7)
     remoto.process.run(conn, ['systemctl', 'restart', 'httpd', ], timeout=7)
@@ -249,9 +249,9 @@ def eayunrgw_create(args):
     new_rgw_keyring(args, gw_name, conn)
 
     # Create pools.
-    suffix = ['rgw', '.rgw.root', '.rgw.control', '.rgw.gc',
-              'rgw.buckets', 'rgw.buckets.index', 'rgw.buckets.extra',
-              '.log', 'intent-log', 'usage', '.users',
+    suffix = ['.rgw', '.rgw.root', '.rgw.control', '.rgw.gc',
+              '.rgw.buckets', '.rgw.buckets.index', '.rgw.buckets.extra',
+              '.log', '.intent-log', '.usage', '.users',
               '.users.email', '.users.uid']
     pools = ['.%s%s' % (zone_name, suf) for suf in suffix]
     for pool in pools:
@@ -274,7 +274,7 @@ def eayunrgw_create(args):
         zone_name,
         zone_name,
         host_name,
-        reduce(lambda x, y: x+','+y, domain)
+        ",".join("\"%s\"" % i for i in domain)
     )
     region_path = '/etc/ceph/%s.json' % region_name
     distro.conn.remote_module.write_file(region_path, region_context)
