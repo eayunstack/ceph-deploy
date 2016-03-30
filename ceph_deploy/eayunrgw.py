@@ -469,7 +469,6 @@ def create_haproxy_conf(hosts_list, vip, vport):
 
     haproxy_peers = ''
     haproxy_servers = HAPROXY_ENDS_CONTECT % (vip, vport)
-
     for host in hosts_list:
         haproxy_peers +='\n'
         haproxy_peers += HAPROXY_PEER_CONTECT % {'host': host}
@@ -517,6 +516,29 @@ def init_pcs_cluster(hosts_list, vip, vip_cidr, hauser, hapass):
     if ret != 0:
         raise exc.GenericError('Failed to initialize PCS cluster: setup\n')
 
+    init_host_join = False
+    retries = 0
+    while retries <= 5:
+        LOG.debug('Checking the first node(%s) getting online' % pcs_init_host)
+
+        if check_host_in_pcs(pcs_init_host, conn=conn):
+            init_host_join = True
+            break
+        else:
+            retries += 1
+
+        time.sleep(10)
+
+    if not init_host_join:
+        LOG.error('Fist node %s not joining in 60s on %s, you should check'
+                  ' mannually.' % pcs_init_host)
+        remoto.process.run(
+            conn,
+            [ 'pcs', 'cluster', 'destroy', '--all' ]
+        )
+        raise exc.GenericError('Failed to initialize PCS cluster: the first'
+                               'node not joining in time.\n')
+
     remoto.process.run(
         conn,
         [
@@ -530,6 +552,14 @@ def init_pcs_cluster(hosts_list, vip, vip_cidr, hauser, hapass):
         [
             'pcs', 'property', 'set',
             'no-quorum-policy=ignore'
+        ]
+    )
+
+    remoto.process.run(
+        conn,
+        [
+            'pcs', 'resource', 'defaults',
+            'resource-stickiness=100'
         ]
     )
 
@@ -581,10 +611,12 @@ def init_pcs_cluster(hosts_list, vip, vip_cidr, hauser, hapass):
         ]
     )
 
-def check_host_in_pcs(host, existed_hosts):
-    op_host = existed_hosts[0]
-    distro = hosts.get(op_host)
-    conn = distro.conn
+def check_host_in_pcs(host, existed_hosts=None, conn=None):
+    if not conn:
+        op_host = existed_hosts[0]
+        distro = hosts.get(op_host)
+        conn = distro.conn
+
     host_in_pcs = False
 
     (out, _, _) = remoto.process.check(
@@ -708,18 +740,6 @@ def eayunrgw_lb_init(args):
 
     create_haproxy_conf(hosts_list, vip, vport)
 
-    for host in hosts_list:
-        distro = hosts.get(host, username=args.username)
-        conn = distro.conn
-        remoto.process.run(
-            conn,
-            ['systemctl', 'enable', 'haproxy']
-        )
-        remoto.process.run(
-            conn,
-            ['systemctl', 'start', 'haproxy']
-        )
-
     init_pcs_cluster(hosts_list, vip, vip_cidr, hauser, hapass)
 
 def eayunrgw_lb_extend(args):
@@ -732,7 +752,7 @@ def eayunrgw_lb_extend(args):
 
     existed_hosts = [h for h in hosts_list if h != new_host]
 
-    if check_host_in_pcs(new_host, existed_hosts):
+    if check_host_in_pcs(new_host, existed_hosts=existed_hosts):
         LOG.info('%s already in EayunOBS loadbalance cluster!' % new_host)
         return
 
@@ -754,7 +774,7 @@ def eayunrgw_lb_extend(args):
 
     haproxy_started_on_new_host = 0
     retries = 0
-    while retries <= 6:
+    while retries <= 5:
         LOG.debug('Checking HAProxy starting on new node: %s' % new_host)
         distro = hosts.get(new_host)
         conn = distro.conn
