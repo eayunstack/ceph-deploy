@@ -120,8 +120,8 @@ backend rgw_back
     balance roundrobin
     option httpchk HEAD / HTTP/1.1\\r\\nHost:\ localhost
     cookie RADOSGWLB insert indirect nocache
-    stick-table type ip size 2 nopurge peers ceph_peers
-    stick on dst'''
+    #stick-table type ip size 2 nopurge peers ceph_peers
+    #stick on dst'''
 
 HAPROXY_SERVER_CONTECT='    server %(host)s %(host)s:8080 check cookie %(host)s'
 
