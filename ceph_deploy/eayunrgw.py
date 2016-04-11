@@ -747,6 +747,10 @@ def eayunrgw_lb_extend(args):
     hosts_list = get_hosts(cfg)
 
     new_host = args.host
+    if not new_host in hosts_list:
+        LOG.error("New host: %s not in ceph.conf!" % new_host)
+        raise exc.GenericError("lb-extend: new host not in ceph.conf\n")
+
     hauser = args.hauser
     hapass = args.hapass
 
