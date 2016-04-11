@@ -14,7 +14,7 @@ from ceph_deploy.util import files
 
 LOG = logging.getLogger(__name__)
 
-RGW_CONTECT = '''<VirtualHost *:8080>
+RGW_CONTECT = '''<VirtualHost *:9090>
     ServerName localhost
     DocumentRoot /var/www/html
     ErrorLog /var/log/httpd/rgw_error.log
@@ -32,12 +32,12 @@ REGION_CONTECT = '''{ "name": "%s",
     "api_name": "%s",
     "is_master": "true",
     "endpoints": [
-          "http:\/\/%s:8080\/"],
+          "http:\/\/%s:9090\/"],
     "master_zone": "%s",
     "zones": [
         { "name": "%s",
             "endpoints": [
-                "http:\/\/%s:8080\/"],
+                "http:\/\/%s:9090\/"],
             "log_meta": "true",
             "log_data": "true"}],
     "placement_targets": [
@@ -123,7 +123,7 @@ backend rgw_back
     #stick-table type ip size 2 nopurge peers ceph_peers
     #stick on dst'''
 
-HAPROXY_SERVER_CONTECT='    server %(host)s %(host)s:8080 check cookie %(host)s'
+HAPROXY_SERVER_CONTECT='    server %(host)s %(host)s:9090 check cookie %(host)s'
 
 def get_exists_region(cfg):
     for sec in cfg.sections():
@@ -238,7 +238,7 @@ def config_http(distro, conn, gw_name):
                        timeout=0)
     httpd_path = '/etc/httpd/conf/httpd.conf'
     httpd_conf = distro.conn.remote_module.get_file(httpd_path)
-    httpd_conf = httpd_conf.replace('\nListen 80\n', '\nListen 8080\n')
+    httpd_conf = httpd_conf.replace('\nListen 80\n', '\nListen 9090\n')
     httpd_context = '%s\n%s' % (httpd_conf, FACTCGI_CONTECT)
     distro.conn.remote_module.write_file(httpd_path, httpd_context)
     gw_context = RGW_CONTECT % gw_name
